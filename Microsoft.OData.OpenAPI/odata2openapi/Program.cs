@@ -160,6 +160,49 @@ namespace odata2openapi
                     }
 
                     operation.Operation.OperationId = prefix + "_" + suffix;
+
+                    // adjustments to operation parameters
+
+                    foreach (var parameter in operation.Operation.Parameters)
+                    {
+                        // get rid of style if it exists.
+                        if (parameter.Style != SwaggerParameterStyle.Undefined)
+                        {
+                            parameter.Style = SwaggerParameterStyle.Undefined;
+                        }
+
+                        // clear unique items
+                        if (parameter.UniqueItems)
+                        {
+                            parameter.UniqueItems = false;
+                        }
+
+                        // many string parameters don't have the type defined.
+                        if (parameter.Type == JsonObjectType.Null)
+                        {
+                            parameter.Type = JsonObjectType.String;
+                        }
+
+                        // we also need to align the schema if it exists.
+
+                        if (parameter.Schema != null)
+                        {
+                            
+                            var schema = parameter.Schema;                          
+                            if (schema.Type == JsonObjectType.Array)
+                            {
+                                // move schema up a level.
+                                parameter.Items.Clear();
+                                foreach (var schemaItem in schema.Items)
+                                {
+                                    parameter.Items.Add(schemaItem);
+                                }
+                                parameter.Schema = null;
+                                parameter.Type = JsonObjectType.Array;
+                            }                            
+                        }
+                    }
+
                 }                
 
                 swagger = swaggerDocument.ToJson(SchemaType.Swagger2);
@@ -190,6 +233,8 @@ namespace odata2openapi
                 */
 
             }
+
+            File.WriteAllText("C:\\tmp\\dynamics-swagger.json", swagger);
 
             Console.Out.WriteLine(swagger);
         }
